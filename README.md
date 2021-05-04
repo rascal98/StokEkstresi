@@ -1,0 +1,2 @@
+# StokEkstresi
+ Stok Ekstresi Uygulaması
