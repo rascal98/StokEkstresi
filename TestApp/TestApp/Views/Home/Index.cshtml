@@ -1,0 +1,141 @@
+﻿@model HomePageViewModel
+@{
+    ViewData["Title"] = "Stok Ekstresi";
+}
+
+<div class="row">
+    <div class="col-md-3">
+        <div style="font-size:24px;font-weight:700;">Mal Arama</div>
+        <label for="mallar" class="mt-2">Mal Kodu Giriniz</label>
+        <input type="text" class="form-control" name="malkodu" id="malkodu" placeholder="Mal Kodu" />
+        <label for="mallar" class="mt-2">Mal Adı Giriniz</label>
+        <input type="text" class="form-control" name="maladi" id="maladi" placeholder="Mal Adı" />
+        <button type="button" class="btn btn-success mt-2" id="araBtn">Ara</button>
+        <form action="/Home/Index" method="post">
+            <div style="font-size:24px;font-weight:700;">Filtreleme</div>
+            <label for="mallar" class="mt-2">Mal Kodu Seçiniz</label>
+            <select name="MalKodu" class="form-control" id="mallar">
+                <option value="">Seçiniz</option>
+            </select>
+            <label class="mt-2">Başlangıç Tarihi</label>
+            <input type="text" class="form-control tarih" name="baslangicTarihi" placeholder="dd.mm.yyyy" />
+            <label class="mt-2">Bitiş Tarihi</label>
+            <input type="text" class="form-control tarih" name="bitisTarihi" placeholder="dd.mm.yyyy" />
+            <button type="submit" class="btn btn-success mt-2">Filtrele</button>
+        </form>
+    </div>
+    
+    <div class="col-md-9">
+        <button class="btn btn-success" onclick="printDiv('print','Stoklar')">Yazdır</button>
+        @(Html.DevExtreme().DataGrid<STKObject>()
+    .DataSource(Model.StkObjectList)
+    .RemoteOperations(true)
+    .Export(e => e.Enabled(true))
+    .Columns(columns => {
+
+        columns.AddFor(m => m.SiraNo);
+
+        columns.AddFor(m => m.IslemTur);
+
+        columns.AddFor(m => m.EvrakNo);
+
+        columns.AddFor(m => m.Tarih);
+
+        columns.AddFor(m => m.GirisMiktar);
+
+        columns.AddFor(m => m.CikisMiktar);
+
+        columns.AddFor(m => m.Stok);
+    })
+)
+    </div>
+
+    <div style="display:none;" id="print">
+        <table border="1">
+            <tr>
+                <th>Sıra No</th>
+                <th>İslem Tür</th>
+                <th>Evrak No</th>
+                <th>Tarih</th>
+                <th>Giriş Miktarı</th>
+                <th>Çıkış Miktarı</th>
+                <th>Stok</th>
+            </tr>
+            @foreach (var item in Model.StkObjectList)
+            {
+                <tr>
+                    <td>
+                        @item.SiraNo
+                    </td>
+                    <td>
+                        @item.IslemTur
+                    </td>
+                    <td>
+                        @item.EvrakNo
+                    </td>
+                    <td>
+                        @item.Tarih
+                    </td>
+                    <td>
+                        @item.GirisMiktar
+                    </td>
+                    <td>
+                        @item.CikisMiktar
+                    </td>
+                    <td>
+                        @item.Stok
+                    </td>
+                </tr>
+            }
+        </table>
+    </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js" integrity="sha512-pHVGpX7F/27yZ0ISY+VVjyULApbDlD0/X0rgGbTqCE7WFW5MezNTWG/dnhtbBuICzsd0WQPgpE4REBLv+UqChw==" crossorigin="anonymous"></script>
+<script>
+    //Tarih Maskeleme
+    $('.tarih').mask('00.00.0000');
+
+    //Mal adı veya koda göre filtreleme
+    $("#araBtn").click(function () {
+        let malAdi = $("#maladi").val();
+        let malKodu = $("#malkodu").val();
+        $.ajax({
+            method: "post",
+            url: "/Home/FindSTK",
+            data: {
+                maladi: malAdi,
+                malkodu: malKodu
+            },
+            success: function (result) {
+                $("#mallar").empty()
+                $("#mallar").append(`<option value="">Seçiniz</option>`)
+                $(result).each(function (i, v) {
+                    $("#mallar").append(`<option value="${v.MalKodu}">${v.MalAdi}</option>`)
+                });
+
+            }
+        })
+    })
+    //Yazdırma işlemi
+    function printDiv(divId,
+        title) {
+
+        let mywindow = window.open('', 'PRINT', 'height=650,width=900,top=100,left=150');
+        mywindow.document.write(`<html><head><title>${title}</title>`);
+        mywindow.document.write('<link href = "css/devextreme/bootstrap.css" rel = "stylesheet" /> <link href="css/devextreme/dx.common.css" rel="stylesheet" /><link href="css/devextreme/dx.light.css" rel="stylesheet" />');
+        mywindow.document.write('</head><body>');
+        mywindow.document.write(document.getElementById(divId).innerHTML);
+        mywindow.document.write(' <script src="js/devextreme/jquery.js"/><script src = "js/devextreme/bootstrap.js" /><script src="js/devextreme/dx.all.js" /><script src="js/devextreme/aspnet/dx.aspnet.mvc.js" /><script src="js/devextreme/aspnet/dx.aspnet.data.js" />');
+
+
+        mywindow.document.write('</body></html>');
+        
+        mywindow.document.close(); // necessary for IE >= 10
+        mywindow.focus(); // necessary for IE >= 10*/
+        mywindow.print();
+        mywindow.close();
+
+        return true;
+    }
+
+</script>

@@ -1,0 +1,82 @@
+USE [TEST]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROC [dbo].[sp_stokekstresi]
+@MalKodu varchar(20)=null,
+@BaslangicTarihi int=null,
+@BitisTarihi int=null
+AS
+BEGIN
+--Temp tablo oluşturulma işlemi
+CREATE TABLE #TempTable
+(
+	SiraNo int,
+	IslemTur int,
+	EvrakNo varchar(16),
+	Tarih varchar(15),
+	GirisMiktar int,
+	CikisMiktar int,
+	Stok int
+)
+--gerekli değişkenler ve değer atamaları
+DECLARE @IslemTur SMALLINT
+DECLARE @Stok INT
+DECLARE @SonStok INT
+DECLARE @siraNo INT 
+Declare @GirisMiktar int
+Declare @CikisMiktar int
+Declare @TempTarih datetime
+Declare @Tarih int
+Declare @EvrakNo varchar(16)
+SET @siraNo=0
+SET @SonStok=0
+
+--filtre değerlerine göre stok hesabının yapılma işlemi
+DECLARE CursorStok CURSOR FOR
+select s.IslemTur,s.EvrakNo,s.Tarih,s.MalKodu,s.Miktar from dbo.STI s WHERE 1=1 AND 
+1=(CASE WHEN @BaslangicTarihi IS NOT NULL AND @BitisTarihi IS NOT NULL AND s.Tarih>= @BaslangicTarihi AND s.Tarih<=@BitisTarihi
+THEN 1 WHEN @BaslangicTarihi IS NULL OR @BitisTarihi IS NULL THEN 1 ELSE 0 END)
+AND 1=(CASE WHEN @MalKodu IS NOT NULL AND @MalKodu=s.MalKodu THEN 1 WHEN @MalKodu IS NULL THEN 1 ELSE 0 END)
+order by s.Tarih
+
+OPEN CursorStok 
+
+FETCH NEXT FROM CursorStok INTO @IslemTur,@EvrakNo,@Tarih,@MalKodu,@Stok
+
+WHILE @@FETCH_STATUS =0
+	BEGIN
+		--sira numarası işlemi, işlem türüne göre giriş çıkış miktarının ayarlanması ve toplam stok miktar hesabı
+		set @siraNo+=1
+		IF @IslemTur=0 and @Stok>0
+			begin
+				set @SonStok =@SonStok+@Stok
+				set @GirisMiktar=@Stok
+				set @CikisMiktar=0
+			end
+		ELSE IF @IslemTur=1 and @Stok>0
+		begin
+			set @CikisMiktar=@Stok
+			set @GirisMiktar=0
+			set @SonStok =@SonStok-@Stok
+		end
+		--tampon tabloya verilerin eklenmesi
+		INSERT INTO #TempTable (SiraNo,IslemTur, EvrakNo, Tarih, GirisMiktar, CikisMiktar, Stok)
+			Select @siraNo,@IslemTur,@EvrakNo,CONVERT(VARCHAR(15), CAST(@Tarih - 2 AS datetime), 104),@GirisMiktar,@CikisMiktar,@SonStok
+
+		FETCH NEXT FROM CursorStok INTO @IslemTur,@EvrakNo,@Tarih,@MalKodu,@Stok
+ 
+	END
+    CLOSE CursorStok;
+    DEALLOCATE CursorStok;
+
+--sonucun dönülmesi ve tampon tablonun silinmesi işlemi
+Select * from #TempTable;
+Drop Table #TempTable;
+
+
+END
+
+GO
